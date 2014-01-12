@@ -1,0 +1,258 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx" xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:util="http://www.springframework.org/schema/util"
+	xsi:schemaLocation=" 
+		http://www.springframework.org/schema/beans 
+		http://www.springframework.org/schema/beans/spring-beans-3.0.xsd 
+		http://www.springframework.org/schema/tx 
+		http://www.springframework.org/schema/tx/spring-tx-3.0.xsd
+		http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd 
+        http://www.springframework.org/schema/util 
+        http://www.springframework.org/schema/util/spring-util.xsd">
+
+	<bean id="messageSource"
+		class="org.springframework.context.support.ResourceBundleMessageSource">
+		<property name="basenames">
+			<list>
+				<value>exceptions</value>
+			</list>
+		</property>
+	</bean>
+
+	<context:property-placeholder location="classpath:jdbc.properties" />
+
+	<bean id="localDataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close">
+		<property name="driverClassName" value="${local.jdbc.driverClassName}" />
+		<property name="url" value="${local.jdbc.url}" />
+		<property name="username" value="${local.jdbc.username}" />
+		<property name="password" value="${local.jdbc.password}" />
+	</bean>
+
+	<bean id="remoteDataSource" class="org.apache.commons.dbcp.BasicDataSource"
+		destroy-method="close">
+		<property name="driverClassName" value="${remote.jdbc.driverClassName}" />
+		<property name="url" value="${remote.jdbc.url}" />
+		<property name="username" value="${remote.jdbc.username}" />
+		<property name="password" value="${remote.jdbc.password}" />
+	</bean>
+
+	<bean id="sessionFactory"
+		class="org.springframework.orm.hibernate4.LocalSessionFactoryBean">
+		<property name="dataSource" ref="remoteDataSource" />
+		<property name="annotatedClasses">
+			<list>
+				<value>com.mt4agents.entities.Agent</value>
+				<value>com.mt4agents.entities.AgentRelationship</value>
+				<value>com.mt4agents.entities.AgentClient</value>
+				<value>com.mt4agents.entities.users.AgentUser</value>
+				<value>com.mt4agents.entities.users.AdminUser</value>
+			</list>
+		</property>
+		<property name="hibernateProperties">
+			<value>
+				hibernate.dialect=org.hibernate.dialect.MySQL5InnoDBDialect
+				hibernate.id.new_generator_mappings=true
+				hibernate.show_sql=false
+				hibernate.hbm2ddl.auto=update
+			</value>
+		</property>
+	</bean>
+
+	<bean id="transactionManager"
+		class="org.springframework.orm.hibernate4.HibernateTransactionManager">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+
+	<bean id="remoteTransactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="remoteDataSource" />
+	</bean>
+	<tx:annotation-driven transaction-manager="transactionManager"
+		proxy-target-class="true" />
+
+
+	<bean id="agentRelationshipDAO" class="com.mt4agents.dao.AgentRelationshipDAO">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	<bean id="agentRelationshipService" class="com.mt4agents.services.AgentRelationshipService">
+		<property name="agentRelationshipDAO" ref="agentRelationshipDAO" />
+		<property name="agentService" ref="agentService" />
+		<property name="messageSource" ref="messageSource" />
+	</bean>
+
+
+	<bean id="mt4UsersQueryByName" class="com.mt4agents.dao.queries.MT4UsersQuery">
+		<constructor-arg name="dataSource" ref="remoteDataSource" />
+		<constructor-arg name="filters">
+			<util:list>
+				<value>name</value>
+			</util:list>
+		</constructor-arg>
+		<constructor-arg name="simple" value="true" />
+	</bean>
+	<bean id="mt4UsersQuery" class="com.mt4agents.dao.queries.MT4UsersQuery">
+		<constructor-arg name="dataSource" ref="remoteDataSource" />
+		<constructor-arg name="filters">
+			<util:list>
+			</util:list>
+		</constructor-arg>
+		<constructor-arg name="simple" value="false" />
+	</bean>
+	<bean id="mt4UsersQueryByLogin" class="com.mt4agents.dao.queries.MT4UsersQuery">
+		<constructor-arg name="dataSource" ref="remoteDataSource" />
+		<constructor-arg name="filters">
+			<util:list>
+				<value>login</value>
+			</util:list>
+		</constructor-arg>
+		<constructor-arg name="simple" value="false" />
+	</bean>
+	<bean id="mt4UsersQueryByLoginSimple" class="com.mt4agents.dao.queries.MT4UsersQuery">
+		<constructor-arg name="dataSource" ref="remoteDataSource" />
+		<constructor-arg name="filters">
+			<util:list>
+				<value>login</value>
+			</util:list>
+		</constructor-arg>
+		<constructor-arg name="simple" value="true" />
+	</bean>
+	<bean id="mt4TradesByLoginQuery" class="com.mt4agents.dao.queries.MT4TradesByLoginQuery">
+		<constructor-arg name="dataSource" ref="remoteDataSource" />
+		<constructor-arg name="filters">
+			<util:list>
+			</util:list>
+		</constructor-arg>
+	</bean>
+	<bean id="mt4TradesByLoginQueryOpenTime" class="com.mt4agents.dao.queries.MT4TradesByLoginQuery">
+		<constructor-arg name="dataSource" ref="remoteDataSource" />
+		<constructor-arg name="filters">
+			<util:list>
+				<value>open_time</value>
+			</util:list>
+		</constructor-arg>
+	</bean>
+	<bean id="mt4TradesByLoginQueryCloseTime" class="com.mt4agents.dao.queries.MT4TradesByLoginQuery">
+		<constructor-arg name="dataSource" ref="remoteDataSource" />
+		<constructor-arg name="filters">
+			<util:list>
+				<value>close_time</value>
+			</util:list>
+		</constructor-arg>
+	</bean>
+	<bean id="mt4TradesByLoginQueryOpenTimeCloseTime" class="com.mt4agents.dao.queries.MT4TradesByLoginQuery">
+		<constructor-arg name="dataSource" ref="remoteDataSource" />
+		<constructor-arg name="filters">
+			<util:list>
+				<value>open_time</value>
+				<value>close_time</value>
+			</util:list>
+		</constructor-arg>
+	</bean>
+	<bean id="mt4TradeCommissionQuery" class="com.mt4agents.dao.queries.MT4TradeCommissionQuery">
+		<constructor-arg name="dataSource" ref="remoteDataSource" />
+	</bean>
+	<bean id="mt4RemoteService" class="com.mt4agents.services.MT4RemoteService">
+		<constructor-arg name="dataSource" ref="remoteDataSource" />
+		<property name="messageSource" ref="messageSource" />
+		<property name="mt4UsersQueryByName" ref="mt4UsersQueryByName" />
+		<property name="mt4UsersQueryByLogin" ref="mt4UsersQueryByLogin" />
+		<property name="mt4UsersQueryByLoginSimple" ref="mt4UsersQueryByLoginSimple" />
+		<property name="mt4TradesByLoginQuery" ref="mt4TradesByLoginQuery" />
+		<property name="mt4TradesByLoginQueryOpenTime" ref="mt4TradesByLoginQueryOpenTime" />
+		<property name="mt4TradesByLoginQueryCloseTime" ref="mt4TradesByLoginQueryCloseTime" />
+		<property name="mt4TradesByLoginQueryOpenTimeCloseTime" ref="mt4TradesByLoginQueryOpenTimeCloseTime" />
+		<property name="mt4TradeCommissionQuery" ref="mt4TradeCommissionQuery" />
+	</bean>
+
+	<bean id="agentDAO" class="com.mt4agents.dao.AgentDAO">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	<bean id="agentService" class="com.mt4agents.services.AgentService">
+		<property name="agentDAO" ref="agentDAO" />
+		<property name="userService" ref="userService" />
+		<property name="agentRelationshipService" ref="agentRelationshipService" />
+		<property name="mt4RemoteService" ref="mt4RemoteService" />
+		<property name="saveAgentValidator" ref="saveAgentValidator" />
+		<property name="agentToAgentDTO" ref="agentToAgentDTO" />
+		<property name="messageSource" ref="messageSource" />
+	</bean>
+
+	<bean id="agentClientDAO" class="com.mt4agents.dao.AgentClientDAO">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	<bean id="agentClientService" class="com.mt4agents.services.AgentClientService">
+		<property name="agentClientDAO" ref="agentClientDAO" />
+		<property name="agentService" ref="agentService" />
+		<property name="clientTradesService" ref="clientTradesService" />
+		<property name="mt4RemoteService" ref="mt4RemoteService" />
+		<property name="agentClientToAgentClientDTO" ref="agentClientToAgentClientDTO" />
+		<property name="saveAgentClientValidator" ref="saveAgentClientValidator" />
+		<property name="messageSource" ref="messageSource" />
+	</bean>
+
+	<bean id="clientTradesService" class="com.mt4agents.services.ClientTradesService">
+		<property name="agentService" ref="agentService" />
+		<property name="agentClientService" ref="agentClientService" />
+		<property name="agentRelationshipService" ref="agentRelationshipService" />
+		<property name="agentClientToAgentClientDTO" ref="agentClientToAgentClientDTO" />
+		<property name="agentToAgentDTO" ref="agentToAgentDTO" />
+		<property name="mt4RemoteService" ref="mt4RemoteService" />
+		<property name="messageSource" ref="messageSource" />
+	</bean>
+
+	<bean id="userDAO" class="com.mt4agents.dao.UserDAO">
+		<property name="sessionFactory" ref="sessionFactory" />
+	</bean>
+	<bean id="userService" class="com.mt4agents.services.UserService">
+		<property name="userDAO" ref="userDAO" />
+		<property name="agentService" ref="agentService" />
+		<property name="userToUserDTO" ref="userToUserDTO" />
+		<property name="messageSource" ref="messageSource" />
+		<property name="saltSource" ref="saltSource" />
+		<property name="passwordEncoder" ref="passwordEncoder" />
+	</bean>
+
+<!-- 	<bean id="installService" class="com.mt4agents.services.InstallService"> -->
+<!-- 		<constructor-arg name="userService" ref="userService" /> -->
+<!-- 		<constructor-arg name="agentService" ref="agentService" /> -->
+<!-- 		<constructor-arg name="agentClientService" ref="agentClientService" /> -->
+<!-- 		<constructor-arg name="agentRelationshipService" ref="agentRelationshipService" /> -->
+<!-- 	</bean> -->
+
+
+	<!-- Helpers and Utilities -->
+	<bean id="saveAgentValidator" class="com.mt4agents.validation.SaveAgentValidator">
+		<property name="agentService" ref="agentService" />
+		<property name="agentRelationshipService" ref="agentRelationshipService" />
+	</bean>
+	<bean id="saveAgentClientValidator" class="com.mt4agents.validation.SaveAgentClientValidator">
+		<property name="agentService" ref="agentService" />
+		<property name="agentClientService" ref="agentClientService" />
+	</bean>
+	<bean id="agentToAgentDTO" class="com.mt4agents.transformers.AgentToAgentDTO" />
+	<bean id="agentClientToAgentClientDTO" class="com.mt4agents.transformers.AgentClientToAgentClientDTO" />
+	<bean id="userToUserDTO" class="com.mt4agents.transformers.UserToUserDTO">
+		<property name="agentToAgentDTO" ref="agentToAgentDTO" />
+	</bean>
+
+	<bean id="saltSource"
+		class="org.springframework.security.authentication.dao.ReflectionSaltSource">
+		<property name="userPropertyToUse" value="username" />
+	</bean>
+
+	<bean id="passwordEncoder"
+		class="org.springframework.security.authentication.encoding.Md5PasswordEncoder" />
+	
+	<bean id="dataGenerator" class="com.mt4agents.util.DataGenerator">
+	    <property name="dataSource" ref="remoteDataSource" />
+	    <property name="agentDAO" ref="agentDAO" />
+	    <property name="userService" ref="userService" />
+	    <property name="agentClientService" ref="agentClientService" />
+	    <property name="agentRelationshipService" ref="agentRelationshipService" />
+	    <property name="mt4RemoteService" ref="mt4RemoteService" />
+	</bean>
+</beans>
